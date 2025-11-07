@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  sqlite:
+    image: nouchka/sqlite3:latest
+    container_name: rubix-sqlite
+    restart: unless-stopped
+    
+    volumes:
+      - ./data:/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./populate.go:/tmp/populate.go
+      - ./go.mod:/tmp/go.mod
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'      
+          memory: 512M     
+        reservations:
+          cpus: '0.5'      
+          memory: 128M     
+    
+    entrypoint: ["/bin/sh", "-c"]
+    command: 
+      - |
+        sqlite3 /data/rubix.db "PRAGMA foreign_keys = ON; VACUUM;" && \
+        if [ -f /docker-entrypoint-initdb.d/init.sql ]; then \
+          sqlite3 /data/rubix.db < /docker-entrypoint-initdb.d/init.sql; \
+        fi && \
+        tail -f /dev/null
+    
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /data/rubix.db && sqlite3 /data/rubix.db 'PRAGMA foreign_keys = ON; SELECT 1;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
