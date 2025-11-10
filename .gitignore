@@ -1,2 +1,13 @@
-data/rubix.db
-postgres/data/*
+# Database files - too large for git
+data/
+postgres/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Build artifacts
+populate
+postgres/populate
+
+# Go
+go.sum
