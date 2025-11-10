@@ -25,8 +25,8 @@ services:
           cpus: '8.0'
           memory: 16G
         reservations:
-          cpus: '4.0'
-          memory: 8G
+          cpus: '1.0'
+          memory: 2G
     
     command:
       - "postgres"
