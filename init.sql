@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS edges(
 CREATE TABLE IF NOT EXISTS tags(
     node_id VARCHAR(26) REFERENCES nodes(id) ON DELETE CASCADE,
     tag_key VARCHAR(100) NOT NULL,
-    tag_value VARCHAR(255) NOT NULL,
+    tag_value VARCHAR(255) NOT NULL DEFAULT '',
     PRIMARY KEY (node_id, tag_key, tag_value)
 );
 
