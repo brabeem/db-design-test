@@ -44,22 +44,6 @@ Same hierarchical structure as SQLite version:
 - **Tags** provide metadata
 - **Port values** store time-series data
 
-## PostgreSQL Optimizations
-
-### Configuration (No Resource Constraints)
-- **CPU**: 8 cores allocated
-- **Memory**: 16GB allocated
-- **Shared Buffers**: 4GB
-- **Effective Cache**: 12GB
-- **Work Memory**: 10MB per operation
-- **Parallel Workers**: 8 workers, 4 per query
-- **WAL**: 1-4GB for write performance
-
-### Advanced Indexes
-- **B-tree indexes** for foreign keys and searches
-- **BRIN indexes** for timestamp columns (time-series optimization)
-- **Partial indexes** for unsynced port values
-- **Composite indexes** for multi-column queries
 
 ## Benchmark Queries
 
