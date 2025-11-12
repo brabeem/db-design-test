@@ -122,7 +122,6 @@ WHERE id IN (
 **Multiple tag search (AND condition - nodes must have ALL specified tags):**
 
 This query efficiently finds nodes that satisfy multiple tag criteria, ensuring all specified tag key-value pairs are present.
-
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT node_id
@@ -134,6 +133,28 @@ WHERE
    OR (tag_key = 'trace_34'  AND tag_value = 'rack-1_253')
 GROUP BY node_id
 HAVING COUNT(DISTINCT tag_key) = 4;
+```
+
+If the query consist of key only rather than key and value , then , it return millions of rows so , shouldn't be invovled in the
+first ORing , and should be used in the latter result set only.
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS)
+WITH filtered_nodes AS (
+  SELECT node_id
+  FROM tags
+  WHERE 
+        (tag_key = 'gauge_37'  AND tag_value = 'stopped_517')
+     OR (tag_key = 'info_83'   AND tag_value = 'hw-rev-a_489')
+     OR (tag_key = 'range_44'  AND tag_value = 'secondary_89')
+  GROUP BY node_id
+  HAVING COUNT(DISTINCT (tag_key, tag_value)) = 3
+)
+SELECT nd.*, tg.*
+FROM nodes nd
+JOIN filtered_nodes fn ON nd.id = fn.node_id
+JOIN tags tg ON nd.id = tg.node_id
+WHERE tg.tag_key = 'trace_34';
 ```
 
 **Performance note:** This approach performs significantly better than multiple JOINs or subqueries, as it uses a single index scan with grouping to filter results.
