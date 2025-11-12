@@ -162,7 +162,27 @@ WHERE tg.tag_key = 'trace_34';
 ### 3. Cascade Delete Performance
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
-DELETE FROM nodes WHERE id = 'your-node-id';
+DELETE FROM nodes WHERE id = 'tfm21tzp8pbo6q09v5i4r9g3no';
+```
+
+The delete is really heavy operation if done on top level nodes, which can be realised from the plan below; This is currently very slow , looking for changes in  schema 
+to make this faster.
+```      
+------------------------------------------------------------------------------------------------------------------------
+ Delete on nodes  (cost=0.56..2.78 rows=0 width=0) (actual time=2.517..2.517 rows=0 loops=1)
+   Buffers: shared hit=10 read=5 dirtied=2
+   ->  Index Scan using nodes_pkey on nodes  (cost=0.56..2.78 rows=1 width=6) (actual time=0.689..0.692 rows=1 loops=1)
+         Index Cond: ((id)::text = 'tfm21tzp8pbo6q09v5i4r9g3no'::text)
+         Buffers: shared hit=3 read=2
+ Planning Time: 0.085 ms
+ Trigger for constraint nodes_parent_id_fkey on nodes: time=9458.431 calls=100101
+ Trigger for constraint ports_node_id_fkey on nodes: time=35877.566 calls=100101
+ Trigger for constraint tags_node_id_fkey on nodes: time=43446.110 calls=100101
+ Trigger for constraint port_values_port_id_fkey on ports: time=58943.024 calls=200202
+ Trigger for constraint edges_from_port_id_fkey on ports: time=9651.115 calls=200202
+ Trigger for constraint edges_to_port_id_fkey on ports: time=8228.618 calls=200202
+ Execution Time: 165867.388 ms
+(13 rows)
 ```
 
 ## Monitoring
