@@ -39,17 +39,16 @@ The schema models a hierarchical graph structure:
 ### 1. Get all nodes under a parent up to a certain level
 
 ```sql
-EXPLAIN QUERY PLAN
+EXPLAIN QUERY PLAN 
 WITH RECURSIVE nodes_hierarchy (id, name, type, description, level) AS (
     SELECT id, name, type, description, 0 
     FROM nodes 
-    WHERE id = "smvzghk49x8pxrp7gf5kmhmimk"
-    
+    WHERE id = "lrfqrvmunyy2s81rzaj78n18mk"
+    and deleted_at is NULL
     UNION ALL
-    
     SELECT nodes.id, nodes.name, nodes.type, nodes.description, nodes_hierarchy.level + 1
     FROM nodes_hierarchy 
-    JOIN nodes ON nodes.parent_id = nodes_hierarchy.id
+    JOIN nodes ON nodes.parent_id = nodes_hierarchy.id and nodes.deleted_at IS NULL
     WHERE level <= 3
 )
 SELECT * FROM nodes_hierarchy;
@@ -60,11 +59,16 @@ SELECT * FROM nodes_hierarchy;
 ### 2. Tag-based filtering
 
 ```sql
-EXPLAIN QUERY PLAN 
-SELECT * FROM nodes 
+EXPLAIN QUERY PLAN
+SELECT * 
+FROM nodes 
 WHERE id IN (
-    SELECT node_id FROM tags 
-    WHERE tag_key = 'category' AND tag_value = 'medium'
+    SELECT node_id 
+    FROM tags 
+    WHERE ((tag_key = 'category' AND tag_value = 'medium' AND deleted_at IS NULL)
+        OR (tag_key = 'category' AND tag_value = 'high'   AND deleted_at IS NULL))
+    GROUP BY node_id 
+    HAVING COUNT(DISTINCT tag_key || '|' || tag_value) = 2
 );
 ```
 

@@ -8,7 +8,8 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS nodes(
     id VARCHAR(26) PRIMARY KEY,
-    type VARCHAR(50) NOT NULL, -- e.g : 'network', 'devices', 'points'
+    deleted_at TIMESTAMP DEFAULT NULL,                  
+    type VARCHAR(50) NOT NULL,  -- e.g : 'network', 'devices', 'points'
     parent_id VARCHAR(26) REFERENCES nodes(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS nodes(
 
 CREATE TABLE IF NOT EXISTS ports(
     id VARCHAR(26) PRIMARY KEY,
+    deleted_at TIMESTAMP DEFAULT NULL,
     node_id VARCHAR(26) REFERENCES nodes(id) ON DELETE CASCADE,
     port_type VARCHAR(50) NOT NULL, -- e.g : 'input', 'output'
     name VARCHAR(255) NOT NULL,
@@ -24,6 +26,7 @@ CREATE TABLE IF NOT EXISTS ports(
 
 CREATE TABLE IF NOT EXISTS port_values(
     id VARCHAR(26) PRIMARY KEY,
+    deleted_at TIMESTAMP DEFAULT NULL,
     port_id VARCHAR(26) REFERENCES ports(id) ON DELETE CASCADE,
     timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     value_numeric DOUBLE PRECISION,
@@ -36,6 +39,7 @@ CREATE TABLE IF NOT EXISTS port_values(
 
 CREATE TABLE IF NOT EXISTS edges(
     id VARCHAR(26) PRIMARY KEY,
+    deleted_at TIMESTAMP DEFAULT NULL,
     from_port_id VARCHAR(26) REFERENCES ports(id) ON DELETE CASCADE,
     to_port_id VARCHAR(26) REFERENCES ports(id) ON DELETE CASCADE,
     description TEXT
@@ -43,18 +47,112 @@ CREATE TABLE IF NOT EXISTS edges(
 
 CREATE TABLE IF NOT EXISTS tags(
     node_id VARCHAR(26) REFERENCES nodes(id) ON DELETE CASCADE,
+    deleted_at TIMESTAMP DEFAULT NULL,
     tag_key VARCHAR(100) NOT NULL,
     tag_value VARCHAR(255) NOT NULL DEFAULT '',
     PRIMARY KEY (node_id, tag_key, tag_value)
 );
 
--- Indexes for search tags operation
-CREATE INDEX IF NOT EXISTS idx_tags_tag_key_tag_value_node_id ON tags(tag_key, tag_value, node_id);
-CREATE INDEX IF NOT EXISTS idx_nodes_parent_id ON nodes(parent_id);
+-- These are better than partial indexes for multi-column WHERE clauses
+CREATE INDEX IF NOT EXISTS idx_nodes_parent_id_deleted ON nodes(parent_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_ports_node_id_deleted ON ports(node_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_port_values_port_id_deleted ON port_values(port_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_edges_from_port_deleted ON edges(from_port_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_edges_to_port_deleted ON edges(to_port_id, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_tags_node_id_deleted ON tags(node_id, deleted_at);
 
--- Indexes for cascade delete operations and join related data operations 
-CREATE INDEX IF NOT EXISTS idx_ports_node_id ON ports(node_id);
-CREATE INDEX IF NOT EXISTS idx_port_values_port_id ON port_values(port_id);
-CREATE INDEX IF NOT EXISTS idx_edges_from_port_id ON edges(from_port_id);
-CREATE INDEX IF NOT EXISTS idx_edges_to_port_id ON edges(to_port_id);
-CREATE INDEX IF NOT EXISTS idx_tags_node_id ON tags(node_id);
+-- Tag search indexes (composite for better performance)
+CREATE INDEX IF NOT EXISTS idx_tags_key_value_node_deleted ON tags(tag_key, tag_value, deleted_at, node_id );
+
+-- Triggers to set deleted_at timestamp on soft delete
+CREATE TRIGGER IF NOT EXISTS cascade_soft_delete_nodes_on_nodes_delete
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+BEGIN
+    UPDATE nodes SET deleted_at = NEW.deleted_at 
+    WHERE parent_id = NEW.id AND deleted_at IS NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_soft_delete_ports_on_nodes_delete
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+BEGIN
+    UPDATE ports SET deleted_at = NEW.deleted_at 
+    WHERE node_id = NEW.id AND deleted_at IS NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_soft_delete_port_values_on_ports_delete
+AFTER UPDATE OF deleted_at ON ports 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+BEGIN
+    UPDATE port_values SET deleted_at = NEW.deleted_at 
+    WHERE port_id = NEW.id AND deleted_at IS NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_soft_delete_edges_on_ports_delete
+AFTER UPDATE OF deleted_at ON ports 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+BEGIN
+    UPDATE edges SET deleted_at = NEW.deleted_at 
+    WHERE (from_port_id = NEW.id OR to_port_id = NEW.id) AND deleted_at IS NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_soft_delete_tags_on_nodes_delete
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL
+BEGIN
+    UPDATE tags SET deleted_at = NEW.deleted_at 
+    WHERE node_id = NEW.id AND deleted_at IS NULL;
+END;
+
+
+-- Trigger to restore deleted_at to NULL on parent node update
+CREATE TRIGGER IF NOT EXISTS cascade_restore_nodes_on_nodes_restore
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+BEGIN
+    UPDATE nodes SET deleted_at = NULL 
+    WHERE parent_id = NEW.id AND deleted_at IS NOT NULL;
+END;    
+
+CREATE TRIGGER IF NOT EXISTS cascade_restore_ports_on_nodes_restore
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+BEGIN
+    UPDATE ports SET deleted_at = NULL 
+    WHERE node_id = NEW.id AND deleted_at IS NOT NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_restore_port_values_on_ports_restore
+AFTER UPDATE OF deleted_at ON ports 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+BEGIN
+    UPDATE port_values SET deleted_at = NULL 
+    WHERE port_id = NEW.id AND deleted_at IS NOT NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_restore_edges_on_ports_restore
+AFTER UPDATE OF deleted_at ON ports 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+BEGIN
+    UPDATE edges SET deleted_at = NULL 
+    WHERE (from_port_id = NEW.id OR to_port_id = NEW.id) AND deleted_at IS NOT NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS cascade_restore_tags_on_nodes_restore
+AFTER UPDATE OF deleted_at ON nodes 
+FOR EACH ROW 
+WHEN NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL
+BEGIN
+    UPDATE tags SET deleted_at = NULL 
+    WHERE node_id = NEW.id AND deleted_at IS NOT NULL;
+END;

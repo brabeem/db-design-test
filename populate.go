@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// 10K nodes
 const (
 	NetworkCount      = 50
 	DevicesPerNetwork = 50
