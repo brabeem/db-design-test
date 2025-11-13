@@ -1,6 +1,9 @@
 -- Enable foreign keys
 PRAGMA foreign_keys = ON;
 
+-- Enable recursive triggers (CRITICAL for cascading soft deletes)
+PRAGMA recursive_triggers = ON;
+
 --  nodes, ports , port_values, edges , tags  
 --  operation 1 : should be able to effieciently delete a node and all its child nodes, ports, port_values, edges
 --  operation 2 : should be able to efficiently get nodes under a parent node,level by level given input level(recursively created index for that)

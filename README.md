@@ -75,11 +75,19 @@ WHERE id IN (
 **Uses index:** `idx_tags_tag_key_tag_value_node_id`
 
 ### 3. Cascade delete operation
-
+    Make sure to PRAGMA recursive_triggers = ON; otherwise delete will be only one level
 ```sql
-EXPLAIN QUERY PLAN 
-DELETE FROM nodes 
-WHERE id = 'smvzghk49x8pxrp7gf5kmhmimk';
+EXPLAIN QUERY PLAN
+UPDATE nodes set deleted_at = datetime('now') 
+where id = '61kub36o9xba7remqgm856gaax';
+```
+
+### 4. Cascade restore operation
+    Make sure to PRAGMA recursive_triggers = ON; otherwise restore will be only one level
+```sql
+EXPLAIN QUERY PLAN
+UPDATE nodes set deleted_at = NULL
+where id = '61kub36o9xba7remqgm856gaax';
 ```
 
 **Uses indexes:** Primary key on `nodes.id` and all foreign key indexes for cascade operations
