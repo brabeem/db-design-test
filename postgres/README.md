@@ -74,7 +74,7 @@ SELECT * FROM nodes_hierarchy;
 
 **Optimized approach using multiple CTEs (significantly faster):**
 
-This approach uses bitmap heap scans instead of index scans, avoiding repeated index-to-heap lookups which are inefficient for large result sets.
+This approach is expected to use bitmap heap scans instead of index scans in case of large number of index scans, avoiding repeated index-to-heap lookups which are inefficient for large result sets.
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS)
